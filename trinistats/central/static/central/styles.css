@@ -1,17 +1,44 @@
-.headerimgdiv img{
-    width:30%;
-    height:auto;
+* {
+    font-family: "Open Sans", sans-serif;
 }
 
-redtext{
-    color:red;
+.panel,
+.panel-heading {
+    background-color: black;
+    color: white;
 }
 
-.w3-card2{
-    height:22em;
-    border-radius: 0.5em;
-    border-style: ridge;
-    border-width: 0.2em;
-    cursor: pointer;
-    border-color: black;
+.panel {
+    z-index: 10;
+    position: absolute;
+}
+
+.panel-heading {
+    text-align: center;
+    border-bottom: 1px solid white;
+}
+
+.custom-tile-parent {
+    margin: 1.0em;
+}
+
+.custom-tile-parent div {
+    border-radius: 0.4em;
+    padding: 1.5em;
+}
+
+.clearfix::after {
+    content: "";
+    clear: both;
+    display: table;
+}
+
+.is-selected {
+    color: white;
+}
+
+.bannerimage {
+    width: 20rem;
+    margin-top: auto;
+    margin-bottom: auto;
 }

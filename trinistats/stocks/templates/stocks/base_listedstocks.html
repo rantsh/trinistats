@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load django_tables2 %}
+{% load static %}
+
+    {% block description %}"Data on all stocks currently listed on the Trinidad and Tobago Stock Exchange (TTSE),
+    displayed in tables."
+    {% endblock description %}
+
+    {% block title %}trinistats | Stocks | Data on all Stocks Listed on the Trinidad and Tobago Stock Exchange (TTSE)
+    {% endblock title %}
+
+    {% block sidepanelcontents %}
+    {% endblock sidepanelcontents %}
+
+    {% block mainblock %}
+    <h1>Stocks Listed on the TTSE</h1>
+    <div class="tablediv_scroll">
+        {% render_table tables.0 %}
+    </div>
+    <hr style="height:2px;border-width:0;color:darkslategray;background-color:darkslategray">
+    <h1>Number of Listed Stocks Per Sector</h1>
+    <br>
+    <div class="">
+    {% render_table tables.1 %}
+    </div>
+    <br>
+    {% endblock mainblock %}
+
+    {% block chartjs %}
+    {% endblock chartjs %}
+    <!-- END MAIN -->
+    
+    <!--Javascript-->
+    {% block activepagetoggle %}
+    $("#listedstockslink").toggleClass("has-background-red");
+    {% endblock %}
+    {% block changeconfigbutton %}
+    $('#configbutton').off('click')
+    $('#configbutton').css('cursor', 'not-allowed'); // 'default' to revert
+    {% endblock %}

@@ -2,71 +2,117 @@
 {% load render_table from django_tables2 %}
 {% load static %}
 
-    {% block ostradeshistorybutton %}
-        <a class="w3-bar-item w3-button w3-theme-l2 w3-hover-white" href="{% url "ostradeshistory" %}">Outstanding Trades</a>
-    {% endblock %}
+    {% block description %}"Data on outstanding trade orders on the Trinidad and Tobago Stock Exchange (TTSE),
+    displayed in a line chart and table."
+    {% endblock description %}
 
-    {% block navbarinsidetop %}
-        <label for="equityid" class="">Stock:</label>
-        <select id="equityid" name="equityid" class="w3-theme-l4 w3-select1">
+    {% block title %}trinistats | Stocks | Outstanding Trades Data for the Trinidad and Tobago Stock Exchange (TTSE)
+    {% endblock title %}}
+
+    {% block customizationbar %}
+
+    <div class="column">
+       <label class="" for="symbol">Stock</label><br>
+        <select class="custom-date-selector" id="symbol" name="symbol">
             <!--Add options based on dictionary items returned-->
-            {% for listedstock in listedstocks %}
-                {% if listedstock.equityid == selectedequityid %}
-                    <option value="{{ listedstock.equityid }}" selected>{{listedstock.symbol}} ({{ listedstock.securityname }})</option>
+            {% for listed_stock in listed_stocks %}
+                {% if listed_stock.symbol == selected_symbol %}
+                    <option value="{{ listed_stock.symbol }}" selected>{{listed_stock.symbol}} ({{ listed_stock.security_name }})</option>
                 {% else %}
-                    <option value="{{ listedstock.equityid }}">{{listedstock.symbol}} ({{ listedstock.securityname }})</option>
+                    <option value="{{ listed_stock.symbol }}">{{listed_stock.symbol}} ({{ listed_stock.security_name }})</option>
                 {% endif %}
             {% endfor %}
         </select>
-        <label for="" class="">O/S Parameter:</label>
-        <select id="osparameter" name="osparameter" class="w3-theme-l4 w3-select1">
-            <option value="osoffervol" selected>O/S Offer Volume</option>
-            <option value="osbid">O/S Bid Price($)</option>
-            <option value="osbidvol">O/S Bid Volume</option>
-            <option value="osoffer">O/S Offer Price($)</option>
-        </select>
-        <label for="startdate" class="">Start Date:</label>
-        <input type="date" value="{{ enteredstartdate }}" id="startdate" name="startdate" class="w3-theme-l4 w3-button2">
-        <label for="enddate" class="">End Date:</label>
-        <input type="date" value="{{ enteredenddate }}" id="enddate" name="enddate" class="w3-theme-l4 w3-button2"/>
-        <input type="submit" onclick="location.href='{% url 'stockhistory' %}" value="Fetch Values" class="w3-theme-l4 w3-button3"/>
-    {% endblock navbarinsidetop %}
+    </div>
 
-    {% block maincontentdiv %}
-        <h2 style="text-align:center" id="charttitle">Outstanding Trade History</h2>
+    <div class="column">
+        <label class="" for="">O/S Parameter</label><br>
+        <select class="custom-date-selector" id="os_parameter" name="os_parameter">
+            <option value="os_offer_vol" selected>O/S Offer Volume</option>
+            <option value="os_bid">O/S Bid Price($)</option>
+            <option value="os_bid_vol">O/S Bid Volume</option>
+            <option value="os_offer">O/S Offer Price($)</option>
+        </select>
+    </div>
+
+    <div class="column">
+        <label class="" for="startdate">Start Date</label><br>
+        <input class="custom-date-selector" type="date" value="{{ entered_start_date }}" id="startdate" name="date__gte" >
+    </div>
+
+    <div class="column">
+        <label class="" for="enddate">End Date</label><br>
+        <input class="custom-date-selector" type="date" value="{{ entered_end_date }}" id="enddate" name="date__lte"/>
+    </div>
+
+    <div class="column">
+        <input type="hidden" value="date" name="sort"></input>    
+        <input name="configure_button" class="custom-red-button" type="submit" onclick="location.href='{% url 'stocks:ostradeshistory' %}" value="Search"/>
+    </div>
+
+    {% endblock customizationbar %}
+
+    {% block mainblock %}
+        <h1 style="text-align:center" id="charttitle">Outstanding Trade History for {{selected_stock_name}} ({{selected_stock_symbol}})</h1>
         <!-- Chart -->
-        <canvas id="stockchart" width="4" height="1">
-            Stock Chart
-        </canvas>
+        <div id="chartdiv" class="chart-div" style="">
+        </div>
+         <br>
+        <div class="tablediv">
         {% render_table table %}
-    {% endblock %}
+        </div>
+    {% endblock mainblock %}
 
     {% block chartjs %}
-    {{ graphlabels|json_script:"graphlabels" }}
-    {{ graphdataset|json_script:"graphdataset" }}
+    {{ graph_labels|json_script:"graph_labels" }}
+    {{ graph_dataset|json_script:"graph_dataset" }}
     <script>
-    var ctx = document.getElementById('stockchart').getContext("2d");
-    var graphlabels = JSON.parse(document.getElementById('graphlabels').textContent);
-    var graphdataset = JSON.parse(document.getElementById('graphdataset').textContent);
-    var myChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: graphlabels,
-            datasets: graphdataset
+    var graph_labels = JSON.parse(document.getElementById('graph_labels').textContent);
+    var graph_dataset = JSON.parse(document.getElementById('graph_dataset').textContent);
+    var trace1 = {
+        x: graph_labels,
+        y: graph_dataset,
+        type: 'scatter'
+    };
+    var data = [trace1];
+    var layout = {
+    xaxis: {
+        automargin: true,
+        title: {text:'Date',
+        standoff: 20
         },
-        options: {
-            scales: {
-                yAxes: [{
-                    scaleLabel: {
-                        display: true,
-                        labelString: '{{osparameterstr}}'
-                    }
-                }]
-            }
-        }
-    });
+        titlefont: {
+        size: 20
+        },
+        showticklabels: true,
+        tickangle: 'auto',
+        tickfont: {
+        size: 16
+        },
+        exponentformat: 'SI',
+        showexponent: 'all'
+    },
+    yaxis: {
+        title: '{{os_parameter_string|safe}}',
+        titlefont: {
+        size: 20
+        },
+        showticklabels: true,
+        tickangle: 45,
+        tickfont: {
+        size: 16
+        },
+        exponentformat: 'SI',
+        showexponent: 'all'
+    }
+    };
+    Plotly.newPlot('chartdiv', data, layout);
     </script>
     {% endblock chartjs %}
     <!-- END MAIN -->
     
     <!--Javascript-->
+    {% block activepagetoggle %}
+    $("#outstandingtradeslink").toggleClass("has-background-red");
+    $("#osparameter").val("{{ osparameter|safe }}").change();
+    {% endblock %}

@@ -18,34 +18,51 @@ import dateutil
 import traceback
 from _datetime import timedelta
 import pytz
+from rest_framework import viewsets
+from .models import Covid19_Paho_Reports
+from .serializers import *
 
-class Covid19CasesTable(tables.Table):
+# Django Tables
+
+
+class Covid19_Daily_Table(tables.Table):
     class Meta:
-        model = models.Covid19Cases
-        attrs = {"class":"djangotables"}
-        fields = ('date','numtested','numpositive','numdeaths','numrecovered')
+        model = models.Covid19_Daily_Data
+        attrs = {"class": "djangotables"}
+        fields = ('date', 'daily_tests', 'daily_positive',
+                  'daily_deaths', 'daily_recovered')
 
-class Covid19DailyTable(tables.Table):
-    class Meta:
-        model = models.Covid19DailyData
-        attrs = {"class":"djangotables"}
-        fields = ('date','dailytests','dailypositive','dailydeaths','dailyrecovered')
-    
-#CONSTANTS
-ALERTMESSAGE = "Sorry! An error was encountered while processing your request."
+# Django REST Framework Views
 
-# Global variables?
+
+class Covid19_Paho_Reports_List(viewsets.ReadOnlyModelViewSet):
+    serializer_class = Covid19_Paho_Reports_Serializer
+    queryset = Covid19_Paho_Reports.objects.all()
+    filterset_fields = ['country_or_territory_name',
+                        'date', 'transmission_type']
+
+
+class Covid19_Worldometers_Reports_List(viewsets.ReadOnlyModelViewSet):
+    serializer_class = Covid19_Worldometers_Reports_Serializer
+    queryset = Covid19_Worldometers_Reports.objects.all()
+    filterset_fields = ['country_or_territory_name', 'date']
+
+
+# CONSTANTS
+ALERTMESSAGE = "Sorry! This page seems to be full of bugs :( We'll call an exterminator soon! Here's what we know: "
+
+# Global variables
 logger = logging.getLogger(__name__)
 
 # Create functions used by the views here
 
-# Create your views here.
+# Django Regular HTTP(s) Views
+
+
 def totals(request):
     try:
         errors = ""
-        logger.info("Totals page was called")
-        # check whether this is the first page load
-        recordedcases = models.Covid19Cases.objects.all()
+        logger.info("Covid19 totals page was called")
         # Validate all input fields
         try:
             # check whether each GET variable was submitted with the request
@@ -57,7 +74,7 @@ def totals(request):
         except:
             if startdateentered:
                 errors += "Please enter a valid value for your start date."
-            startdate =datetime.now()+dateutil.relativedelta.relativedelta(months=-1)
+            startdate = datetime.now()+dateutil.relativedelta.relativedelta(weeks=-4)
         try:
             # check whether each GET variable was submitted with the request
             if request.GET.get('enddate'):
@@ -76,75 +93,74 @@ def totals(request):
         if startdate > enddate:
             errors += "Your starting date must be before your ending date. Please recheck."
         if request.GET.get('sort'):
-            orderby=request.GET.get('sort')
+            orderby = request.GET.get('sort')
         else:
             # default table order
             orderby = '-date'
         if request.GET.get('selectedcasetypeleft'):
             selectedcasetypeleft = request.GET.get('selectedcasetypeleft')
         else:
-            selectedcasetypeleft = 'numtested'
+            selectedcasetypeleft = 'total_cases'
         if request.GET.get('selectedcasetyperight'):
             selectedcasetyperight = request.GET.get('selectedcasetyperight')
         else:
-            selectedcasetyperight = 'numpositive'
+            selectedcasetyperight = 'total_tests'
         # Get the full names for the case types selected
-        selectedfieldleftverbosename = models.Covid19Cases._meta.get_field(selectedcasetypeleft).verbose_name
-        selectedfieldrightverbosename = models.Covid19Cases._meta.get_field(selectedcasetyperight).verbose_name
-        # Fetch the records from the db
-        selectedrecords = models.Covid19Cases.objects.filter(date__gt=enteredstartdate).filter(date__lt=enteredenddate).values('date','numtested','numpositive','numdeaths','numrecovered').order_by('date')
-        # Set up our table
-        tabledata = Covid19CasesTable(selectedrecords, order_by=orderby)
-        tabledata.paginate(page=request.GET.get("page", 1), per_page=25)
+        selectedfieldleftverbosename = models.Covid19_Worldometers_Reports._meta.get_field(
+            selectedcasetypeleft).verbose_name
+        selectedfieldrightverbosename = models.Covid19_Worldometers_Reports._meta.get_field(
+            selectedcasetyperight).verbose_name
+        # Fetch the selected records from the db
+        selectedrecords = models.Covid19_Worldometers_Reports.objects.filter(date__gt=enteredstartdate)\
+            .filter(country_or_territory_name="Trinidad and Tobago")\
+            .filter(date__lt=enteredenddate)\
+            .values('date', 'total_tests', 'total_cases', 'total_deaths', 'total_recovered')\
+            .order_by('date')
+        # Set up our summary data
+        latestrecord = models.Covid19_Worldometers_Reports.objects\
+            .filter(country_or_territory_name="Trinidad and Tobago")\
+            .latest('date')
         # Set up our graph
         graphlabels = [obj['date'] for obj in selectedrecords]
-        graphdataset = []
-        # Add data for the first dataset
-        graphdict = dict(data = [obj[selectedcasetypeleft] for obj in selectedrecords],
-                         yAxisID = 'A',
-                         borderColor = 'rgb(0, 0, 255)',
-                         backgroundColor = 'rgba(255, 255, 255,0)',
-                         label = selectedfieldleftverbosename)
-        graphdataset.append(graphdict)
+        graphdataset1 = [obj[selectedcasetypeleft] for obj in selectedrecords]
         # Add data for the second dataset
-        graphdict = dict(data = [obj[selectedcasetyperight] for obj in selectedrecords],
-                         yAxisID = 'B',
-                         borderColor = 'rgb(0, 255, 0)',
-                         backgroundColor = 'rgba(255, 255, 255,0)',
-                         label = selectedfieldrightverbosename)
-        graphdataset.append(graphdict)
+        graphdataset2 = [obj[selectedcasetyperight] for obj in selectedrecords]
         # Set up the case type options for the dropdown select
-        validcasetypes = [models.Covid19Cases._meta.get_field('numtested'),
-                          models.Covid19Cases._meta.get_field('numpositive'),
-                          models.Covid19Cases._meta.get_field('numdeaths'),
-                          models.Covid19Cases._meta.get_field('numrecovered')]
+        validcasetypes = [models.Covid19_Worldometers_Reports._meta.get_field('total_tests'),
+                          models.Covid19_Worldometers_Reports._meta.get_field(
+                              'total_cases'),
+                          models.Covid19_Worldometers_Reports._meta.get_field(
+                              'total_deaths'),
+                          models.Covid19_Worldometers_Reports._meta.get_field('total_recovered')]
     except Exception as ex:
         errors = ALERTMESSAGE+str(ex)
         logging.critical(traceback.format_exc())
-        logger.error(errors)    
+        logger.error(errors)
     # Now add our context data and return a response
     context = {
-        'errors':errors,
-        'validcasetypes':validcasetypes,
-        'selectedcasetypeleftstr':selectedcasetypeleft,
-        'selectedcasetypeleftverbose':selectedfieldleftverbosename,
-        'selectedcasetyperightstr':selectedcasetyperight,
-        'selectedcasetyperightverbose':selectedfieldrightverbosename,
-        'table':tabledata,
-        'enteredstartdate':enteredstartdate,
-        'enteredenddate':enteredenddate,
-        'graphlabels':graphlabels,
-        'graphdataset':graphdataset,
+        'errors': errors,
+        'validcasetypes': validcasetypes,
+        'selectedcasetypeleftstr': selectedcasetypeleft,
+        'selectedcasetypeleftverbose': selectedfieldleftverbosename,
+        'selectedcasetyperightstr': selectedcasetyperight,
+        'selectedcasetyperightverbose': selectedfieldrightverbosename,
+        'enteredstartdate': enteredstartdate,
+        'enteredenddate': enteredenddate,
+        'graphlabels': graphlabels,
+        'graphdataset1': graphdataset1,
+        'graphdataset2': graphdataset2,
+        'latestrecord': latestrecord,
     }
     return render(request, "covid19/base_totals.html", context)
+
 
 def daily(request):
     try:
         errors = ""
         logger.info("Daily page was called")
-        dailycases = models.Covid19DailyData.objects.all()
+        daily_cases = models.Covid19_Daily_Data.objects.all()
         # Check if our request contains our GET dates
-        if request.method == 'GET' and all(x in request.GET for x in ['startdate','enddate']):
+        if request.method == 'GET' and all(x in request.GET for x in ['startdate', 'enddate']):
             # Validate all input fields
             startdate = parse(request.GET.get('startdate'))
             if not startdate:
@@ -160,55 +176,65 @@ def daily(request):
                 errors += "Your starting date must be before your ending date. Please recheck."
         else:
             # Put some default dates into our form.
-            enteredstartdate = (datetime.now()+dateutil.relativedelta.relativedelta(months=-1)).strftime('%Y-%m-%d')
-            enteredenddate = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+            enteredstartdate = (datetime.now(
+            )+dateutil.relativedelta.relativedelta(months=-1)).strftime('%Y-%m-%d')
+            enteredenddate = (
+                datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         if request.GET.get('sort'):
-            orderby=request.GET.get('sort')
+            orderby = request.GET.get('sort')
         else:
             # default table order
             orderby = '-date'
         if request.GET.get('selectedcasetype'):
             selectedcasetype = request.GET.get('selectedcasetype')
         else:
-            selectedcasetype = 'dailypositive'
+            selectedcasetype = 'daily_positive'
         # Get the full names for the case types selected
-        selectedfieldverbosename = models.Covid19DailyData._meta.get_field(selectedcasetype).verbose_name
+        selectedfieldverbosename = 'N/A'
+        selectedfieldverbosename = models.Covid19_Daily_Data._meta.get_field(
+            selectedcasetype).verbose_name
         # Fetch the records from the db
-        selectedrecords = models.Covid19DailyData.objects.filter(date__gt=enteredstartdate).filter(date__lt=enteredenddate).values('date','dailytests','dailypositive','dailydeaths','dailyrecovered').order_by('date')
-        # Set up our table
-        tabledata = Covid19DailyTable(selectedrecords, order_by=orderby)
-        tabledata.paginate(page=request.GET.get("page", 1), per_page=25)
+        selectedrecords = models.Covid19_Daily_Data.objects.filter(date__gt=enteredstartdate)\
+            .filter(date__lt=enteredenddate)\
+            .values('date', 'daily_tests', 'daily_positive', 'daily_deaths', 'daily_recovered')\
+            .order_by('date')
+        # Get the date for yesterday
+        yesterdaydate = (datetime.now() + timedelta(days=-1)
+                         ).strftime('%Y-%m-%d')
+        # Get the record from the daily table for yesterday data
+        yesterdaydata = models.Covid19_Daily_Data.objects.filter(
+            date=yesterdaydate)
+        if not yesterdaydata:
+            errors += "No daily data found for yesterday ("+yesterdaydate+")"
+            yesterdaydata = ['N/A']
         # Set up our graph
         graphlabels = [obj['date'] for obj in selectedrecords]
-        graphdataset = []
-        # Add data for the first dataset
-        graphdict = dict(
-                        label = selectedfieldverbosename,
-                        backgroundColor= "rgb(255,0,0)",
-                        data = [obj[selectedcasetype] for obj in selectedrecords],)
-        graphdataset.append(graphdict)
+        graphdataset = [obj[selectedcasetype] for obj in selectedrecords]
         # Set up the case type options for the dropdown select
-        validcasetypes = [models.Covid19DailyData._meta.get_field('dailytests'),
-                          models.Covid19DailyData._meta.get_field('dailypositive'),
-                          models.Covid19DailyData._meta.get_field('dailydeaths'),
-                          models.Covid19DailyData._meta.get_field('dailyrecovered')]
+        validcasetypes = [models.Covid19_Daily_Data._meta.get_field('daily_tests'),
+                          models.Covid19_Daily_Data._meta.get_field(
+                              'daily_positive'),
+                          models.Covid19_Daily_Data._meta.get_field(
+                              'daily_deaths'),
+                          models.Covid19_Daily_Data._meta.get_field('daily_recovered')]
     except Exception as ex:
         errors = ALERTMESSAGE+str(ex)
         logging.critical(traceback.format_exc())
-        logger.error(errors)    
+        logger.error(errors)
     # Now add our context data and return a response
     context = {
-        'errors':errors,
-        'validcasetypes':validcasetypes,
-        'selectedcasetypestr':selectedcasetype,
-        'selectedcasetypeverbose':selectedfieldverbosename,
-        'table':tabledata,
-        'enteredstartdate':enteredstartdate,
-        'enteredenddate':enteredenddate,
-        'graphlabels':graphlabels,
-        'graphdataset':graphdataset,
+        'errors': errors,
+        'validcasetypes': validcasetypes,
+        'selectedcasetypestr': selectedcasetype,
+        'selectedcasetypeverbose': selectedfieldverbosename,
+        'yesterdaydata': yesterdaydata[0],
+        'enteredstartdate': enteredstartdate,
+        'enteredenddate': enteredenddate,
+        'graphlabels': graphlabels,
+        'graphdataset': graphdataset,
     }
     return render(request, "covid19/base_daily.html", context)
+
 
 def about(request):
     try:
@@ -217,9 +243,9 @@ def about(request):
     except Exception as ex:
         errors = ALERTMESSAGE+str(ex)
         logging.critical(traceback.format_exc())
-        logger.error(errors)    
+        logger.error(errors)
     # Now add our context data and return a response
     context = {
-        'errors':errors,
+        'errors': errors,
     }
     return render(request, "covid19/base_about.html", context)

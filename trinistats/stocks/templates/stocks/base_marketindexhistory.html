@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load render_table from django_tables2 %}
+{% load static %}
+
+    {% block description %}"Historical market index data for the Trinidad and Tobago Stock Exchange (TTSE),
+    displayed in a line chart and table."
+    {% endblock description %}
+
+    {% block title %}trinistats | Stocks | Market Index Historical Data for the Trinidad and Tobago Stock Exchange (TTSE)
+    {% endblock title %}
+
+
+{% block customizationbar %}
+
+<div class="column">
+    <label class="" for="">Market Index Name</label><br>
+    <select class="custom-date-selector" id="index_name" name="index_name">
+        <option value="Composite Totals">Composite Totals</option>
+        <option value="All T&T Totals">All T&T Totals</option>
+        <option value="Cross-Listed Totals">Cross-Listed Totals</option>
+    </select>
+</div>
+
+<div class="column">
+    <label class="" for="">Market Parameter</label><br>
+    <select class="custom-date-selector" id="index_parameter" name="index_parameter">
+        <option value="index_value">Index Value</option>
+        <option value="volume_traded">Volume Traded</option>
+        <option value="value_traded">Value Traded</option>
+        <option value="num_trades">No. of Trades</option>
+    </select>
+</div>
+
+<div class="column">
+    <label class="" for="startdate">Start Date</label><br>
+    <input class="custom-date-selector" type="date" value="{{ entered_start_date }}" id="startdate" name="date__gte">
+</div>
+
+<div class="column">
+    <label class="" for="enddate">End Date</label><br>
+    <input class="custom-date-selector" type="date" value="{{ entered_end_date }}" id="enddate" name="date__lte"/>
+</div>
+
+<div class="column">
+    <input type="hidden" value="date" name="sort"></input>
+    <input name="configure_button" class="custom-red-button" type="submit" onclick="location.href='{% url 'stocks:marketindexhistory' %}" value="Search"/>
+</div>
+
+{% endblock customizationbar %}
+
+    {% block mainblock %}
+        <h1 style="" id="charttitle">{{index_name}} Index History</h1>
+        <br>
+        <!-- Chart -->
+        <div id="chartdiv" class="chart-div" style="">
+        </div>
+        <br>
+        <div class="tablediv">
+        {% render_table table %}
+        </div>
+    {% endblock mainblock %}
+
+    {% block chartjs %}
+    {{ graph_labels|json_script:"graph_labels" }}
+    {{ graph_dataset|json_script:"graph_dataset" }}
+    <script>
+    var graph_labels = JSON.parse(document.getElementById('graph_labels').textContent);
+    var graph_dataset = JSON.parse(document.getElementById('graph_dataset').textContent);
+    var index_parameter_string = '{{ index_parameter_string }}';
+    var trace1 = {
+        x: graph_labels,
+        y: graph_dataset,
+        type: 'scatter'
+    };
+    var data = [trace1];
+    var layout = {
+    xaxis: {
+        automargin: true,
+        title: {text:'Date',
+        standoff: 20
+        },
+        titlefont: {
+        size: 20
+        },
+        showticklabels: true,
+        tickangle: 'auto',
+        tickfont: {
+        size: 16
+        },
+        exponentformat: 'SI',
+        showexponent: 'all'
+    },
+    yaxis: {
+        title: index_parameter_string,
+        titlefont: {
+        size: 20
+        },
+        showticklabels: true,
+        tickangle: 45,
+        tickfont: {
+        size: 16
+        },
+        exponentformat: 'SI',
+        showexponent: 'all'
+    }
+    };
+    Plotly.newPlot('chartdiv', data, layout);
+    </script>
+    {% endblock chartjs %}
+    <!-- END MAIN -->
+    
+    <!--Javascript-->
+    {% block activepagetoggle %}
+    $("#markethistorylink").toggleClass("has-background-red");
+    // set the selected value for the configurations
+    $("#index_name").val("{{ index_name|safe }}").change();
+    $("#index_parameter").val("{{ index_parameter|safe }}").change();
+    {% endblock %}
+
+     {% block morejs%}
+    <script>
+    </script>
+    {% endblock morejs%}
