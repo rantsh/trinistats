@@ -20,14 +20,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY', 'ti0b+f1@c4y3hxnk-q$z@sxkqrl$lka$552@(-+sh2%y1+r_c3')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'ti0b+f1@c4y3hxnk-q$z@sxkqrl$lka$552@(-+sh2%y1+r_c3')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', False)
 
-ALLOWED_HOSTS = ["104.129.41.52", "104.129.41.55", "127.0.0.1",
-                 "[2607:ff48:aa81:1600:0:1:1e4:e27b]", "trinistats.com", "www.trinistats.com"]
+ALLOWED_HOSTS = []
 SETTINGS_PATH = os.path.dirname(os.path.dirname(__file__))
 
 # Application definition
@@ -108,8 +106,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'trinistatsdb',
-        'USER': 'django',
-        'PASSWORD': 'djangopassword',
+        'USER': 'root',
+        'PASSWORD': None,
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -153,8 +151,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(
-    BASE_DIR, '/var/www/github_trinistats/trinistats/static')
+STATIC_ROOT = os.path.join(BASE_DIR, '/var/www/trinistats/static')
 
 LOGGING = {
     'version': 1,
